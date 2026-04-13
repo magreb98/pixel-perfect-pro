@@ -8,6 +8,7 @@ interface NavbarProps {
 
 const tabs = [
   { id: 'editor', label: 'Éditeur' },
+  { id: 'compare', label: 'Comparateur' },
   { id: 'batch', label: 'Batch' },
   { id: 'history', label: 'Historique' },
 ];
