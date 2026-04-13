@@ -332,6 +332,7 @@ export default function Index() {
             </motion.div>
           )}
 
+          {tab === 'history' && (
             <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="max-w-2xl mx-auto space-y-6">
               <div className="text-center space-y-2">
                 <h2 className="font-heading text-2xl font-bold text-foreground">Historique</h2>
