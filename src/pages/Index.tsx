@@ -7,6 +7,7 @@ import BeforeAfterSlider from '@/components/BeforeAfterSlider';
 import ResultStats from '@/components/ResultStats';
 import BatchProcessor from '@/components/BatchProcessor';
 import HistoryPanel from '@/components/HistoryPanel';
+import ImageAnalysisPanel from '@/components/ImageAnalysisPanel';
 import {
   processImage,
   addToHistory,
