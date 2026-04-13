@@ -9,6 +9,7 @@ interface NavbarProps {
 
 const tabs = [
   { id: 'editor', label: 'Éditeur' },
+  { id: 'filters', label: 'Filtres' },
   { id: 'crop', label: 'Recadrage' },
   { id: 'compare', label: 'Comparateur' },
   { id: 'pipeline', label: 'Pipeline' },
