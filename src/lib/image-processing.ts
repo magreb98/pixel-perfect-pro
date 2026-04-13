@@ -1,13 +1,22 @@
 import { removeBackground } from '@imgly/background-removal';
+import {
+  applyCLAHE,
+  edgeAwareSharpen,
+  multiPassSharpen,
+  lanczosResize,
+  findOptimalQuality,
+  gammaCorrectResize,
+} from './advanced-processing';
 
 export interface ProcessingOptions {
   mode: 'compress' | 'resize' | 'upscale' | 'remove-bg';
   quality: number;
-  format: 'webp' | 'jpeg' | 'png';
+  format: 'webp' | 'jpeg' | 'png' | 'avif';
   width?: number;
   height?: number;
   maintainAspect: boolean;
   scale?: number;
+  autoOptimize?: boolean; // perceptual quality optimization
 }
 
 export interface ProcessingResult {
@@ -40,9 +49,9 @@ export async function processImage(
     return removeBackgroundProcess(file, options, onProgress);
   }
 
-  onProgress?.(10);
+  onProgress?.(5);
   const img = await loadImage(file);
-  onProgress?.(30);
+  onProgress?.(15);
 
   let targetW = img.naturalWidth;
   let targetH = img.naturalHeight;
@@ -59,35 +68,73 @@ export async function processImage(
     targetH = Math.round(img.naturalHeight * options.scale);
   }
 
-  onProgress?.(50);
+  onProgress?.(25);
 
-  const canvas = document.createElement('canvas');
-  canvas.width = targetW;
-  canvas.height = targetH;
-  const ctx = canvas.getContext('2d')!;
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
+  let canvas: HTMLCanvasElement;
 
-  if (options.mode === 'upscale') {
-    ctx.drawImage(img, 0, 0, targetW, targetH);
-    applyUnsharpMask(ctx, targetW, targetH, 0.6, 1.2);
+  if (options.mode === 'resize') {
+    // Gamma-correct resize for superior color accuracy
+    canvas = gammaCorrectResize(img, targetW, targetH);
+    onProgress?.(60);
+
+    // Light sharpening after downscale to restore detail
+    if (targetW < img.naturalWidth) {
+      const ctx = canvas.getContext('2d')!;
+      edgeAwareSharpen(ctx, targetW, targetH, 0.3, 25);
+    }
+  } else if (options.mode === 'upscale') {
+    // Lanczos-approximation upscale
+    canvas = lanczosResize(img, img.naturalWidth, img.naturalHeight, targetW, targetH);
+    onProgress?.(40);
+
+    const ctx = canvas.getContext('2d')!;
+
+    // CLAHE for enhanced local contrast
+    applyCLAHE(ctx, targetW, targetH, 1.5, 8);
+    onProgress?.(55);
+
+    // Multi-pass progressive sharpening (edge-aware)
+    multiPassSharpen(ctx, targetW, targetH, 3, 0.5);
+    onProgress?.(70);
+
+    // Final edge-aware refinement
+    edgeAwareSharpen(ctx, targetW, targetH, 0.4, 20);
+    onProgress?.(80);
   } else {
-    if (targetW < img.naturalWidth / 2) {
-      stepDownResize(img, canvas, ctx, targetW, targetH);
+    // Compress mode: just draw
+    canvas = document.createElement('canvas');
+    canvas.width = targetW;
+    canvas.height = targetH;
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, targetW, targetH);
+  }
+
+  onProgress?.(85);
+
+  // Encoding
+  const mimeMap: Record<string, string> = {
+    webp: 'image/webp',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    avif: 'image/avif',
+  };
+  const mime = mimeMap[options.format] || 'image/webp';
+
+  let quality: number | undefined;
+  if (options.format !== 'png') {
+    if (options.autoOptimize && (options.format === 'webp' || options.format === 'jpeg')) {
+      // Perceptual quality optimization
+      quality = (await findOptimalQuality(canvas, options.format, 100 - options.quality)) / 100;
     } else {
-      ctx.drawImage(img, 0, 0, targetW, targetH);
+      quality = options.quality / 100;
     }
   }
 
-  onProgress?.(75);
-
-  const mimeMap = { webp: 'image/webp', jpeg: 'image/jpeg', png: 'image/png' };
-  const mime = mimeMap[options.format];
-  const quality = options.format === 'png' ? undefined : options.quality / 100;
-
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error('Échec de l\'encodage'))),
+      (b) => (b ? resolve(b) : reject(new Error("Échec de l'encodage — le format n'est peut-être pas supporté par ce navigateur"))),
       mime,
       quality
     );
@@ -128,7 +175,6 @@ async function removeBackgroundProcess(
 
   onProgress?.(90);
 
-  // Re-encode to desired format
   const img = await loadImage(resultBlob);
   const canvas = document.createElement('canvas');
   canvas.width = img.naturalWidth;
@@ -141,7 +187,7 @@ async function removeBackgroundProcess(
 
   const finalBlob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error('Échec de l\'encodage'))),
+      (b) => (b ? resolve(b) : reject(new Error("Échec de l'encodage"))),
       mime,
       quality
     );
@@ -162,67 +208,6 @@ async function removeBackgroundProcess(
   };
 }
 
-function stepDownResize(
-  img: HTMLImageElement,
-  _target: HTMLCanvasElement,
-  ctx: CanvasRenderingContext2D,
-  tw: number,
-  th: number
-) {
-  let cw = img.naturalWidth;
-  let ch = img.naturalHeight;
-  let src: CanvasImageSource = img;
-
-  while (cw / 2 > tw) {
-    cw = Math.round(cw / 2);
-    ch = Math.round(ch / 2);
-    const step = document.createElement('canvas');
-    step.width = cw;
-    step.height = ch;
-    const sCtx = step.getContext('2d')!;
-    sCtx.imageSmoothingEnabled = true;
-    sCtx.imageSmoothingQuality = 'high';
-    sCtx.drawImage(src, 0, 0, cw, ch);
-    src = step;
-  }
-
-  ctx.drawImage(src, 0, 0, tw, th);
-}
-
-function applyUnsharpMask(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-  amount: number,
-  radius: number
-) {
-  const imageData = ctx.getImageData(0, 0, w, h);
-  const data = imageData.data;
-  const copy = new Uint8ClampedArray(data);
-
-  const kernelSize = Math.ceil(radius * 3) | 1;
-  const half = Math.floor(kernelSize / 2);
-
-  for (let y = half; y < h - half; y++) {
-    for (let x = half; x < w - half; x++) {
-      for (let c = 0; c < 3; c++) {
-        let sum = 0, count = 0;
-        for (let ky = -half; ky <= half; ky++) {
-          for (let kx = -half; kx <= half; kx++) {
-            sum += copy[((y + ky) * w + (x + kx)) * 4 + c];
-            count++;
-          }
-        }
-        const blurred = sum / count;
-        const idx = (y * w + x) * 4 + c;
-        data[idx] = Math.min(255, Math.max(0, Math.round(data[idx] + (data[idx] - blurred) * amount)));
-      }
-    }
-  }
-
-  ctx.putImageData(imageData, 0, 0);
-}
-
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
@@ -241,7 +226,7 @@ export interface HistoryEntry {
   height: number;
   format: string;
   timestamp: number;
-  thumbnail: string; // base64 data url
+  thumbnail: string;
 }
 
 const HISTORY_KEY = 'pixelforge-history';

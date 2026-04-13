@@ -4,7 +4,8 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Zap, Maximize, Sparkles, Scissors, Download, Loader2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Zap, Maximize, Sparkles, Scissors, Download, Loader2, Wand2 } from 'lucide-react';
 import type { ProcessingOptions } from '@/lib/image-processing';
 
 type Mode = ProcessingOptions['mode'];
@@ -29,9 +30,10 @@ const modes: { value: Mode; label: string; icon: React.ReactNode }[] = [
 export default function ProcessingPanel({ onProcess, onDownload, processing, progress, hasResult, originalWidth, originalHeight }: ProcessingPanelProps) {
   const [mode, setMode] = useState<Mode>('compress');
   const [quality, setQuality] = useState(80);
-  const [format, setFormat] = useState<'webp' | 'jpeg' | 'png'>('webp');
+  const [format, setFormat] = useState<ProcessingOptions['format']>('webp');
   const [width, setWidth] = useState(originalWidth || 1920);
   const [scale, setScale] = useState(2);
+  const [autoOptimize, setAutoOptimize] = useState(false);
 
   const handleProcess = () => {
     const opts: ProcessingOptions = {
@@ -40,6 +42,7 @@ export default function ProcessingPanel({ onProcess, onDownload, processing, pro
       width: mode === 'resize' ? width : undefined,
       maintainAspect: true,
       scale: mode === 'upscale' ? scale : undefined,
+      autoOptimize: mode === 'compress' ? autoOptimize : false,
     };
     onProcess(opts);
   };
@@ -79,7 +82,16 @@ export default function ProcessingPanel({ onProcess, onDownload, processing, pro
         </div>
       )}
 
-      {/* Format (hidden for remove-bg, always PNG) */}
+      {/* Upscale info */}
+      {mode === 'upscale' && (
+        <div className="rounded-xl bg-primary/5 border border-primary/20 p-3">
+          <p className="text-xs text-primary">
+            Pipeline avancé : Resize Lanczos → CLAHE (contraste local) → Sharpening multi-passes → Renforcement des contours.
+          </p>
+        </div>
+      )}
+
+      {/* Format */}
       {mode !== 'remove-bg' && (
         <div className="space-y-2">
           <label className="text-sm text-muted-foreground">Format de sortie</label>
@@ -91,6 +103,7 @@ export default function ProcessingPanel({ onProcess, onDownload, processing, pro
               <SelectItem value="webp">WebP (recommandé)</SelectItem>
               <SelectItem value="jpeg">JPEG</SelectItem>
               <SelectItem value="png">PNG (sans perte)</SelectItem>
+              <SelectItem value="avif">AVIF (expérimental)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -104,6 +117,20 @@ export default function ProcessingPanel({ onProcess, onDownload, processing, pro
             <span className="text-primary font-semibold">{quality}%</span>
           </div>
           <Slider value={[quality]} onValueChange={([v]) => setQuality(v)} min={10} max={100} step={1} />
+        </div>
+      )}
+
+      {/* Auto optimize toggle for compress */}
+      {mode === 'compress' && format !== 'png' && (
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Wand2 className="w-4 h-4 text-primary" />
+            <div>
+              <p className="text-sm text-foreground">Optimisation perceptuelle</p>
+              <p className="text-[11px] text-muted-foreground">Trouve la qualité optimale automatiquement</p>
+            </div>
+          </div>
+          <Switch checked={autoOptimize} onCheckedChange={setAutoOptimize} />
         </div>
       )}
 
@@ -121,7 +148,7 @@ export default function ProcessingPanel({ onProcess, onDownload, processing, pro
           />
           {originalWidth && originalHeight && (
             <p className="text-xs text-muted-foreground">
-              Original : {originalWidth} × {originalHeight}
+              Original : {originalWidth} × {originalHeight} · Gamma-correct resize + edge-aware sharpening
             </p>
           )}
         </div>
@@ -159,7 +186,10 @@ export default function ProcessingPanel({ onProcess, onDownload, processing, pro
             />
           </div>
           <p className="text-xs text-muted-foreground text-center">
-            {mode === 'remove-bg' && progress < 30 ? 'Chargement du modèle IA…' : 'Traitement en cours…'} {progress}%
+            {mode === 'remove-bg' && progress < 30 ? 'Chargement du modèle IA…' :
+             mode === 'upscale' && progress < 50 ? 'Resize Lanczos…' :
+             mode === 'upscale' && progress < 70 ? 'CLAHE + Sharpening…' :
+             'Traitement en cours…'} {progress}%
           </p>
         </div>
       )}
