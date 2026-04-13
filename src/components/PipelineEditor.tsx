@@ -526,6 +526,38 @@ function StepConfigEditor({ step, onChange }: { step: PipelineStep; onChange: (p
     );
   }
 
+  if (type === 'filter') {
+    const filterSliders: { key: string; configKey: keyof StepConfig; label: string; min: number; max: number; unit?: string }[] = [
+      { key: 'br', configKey: 'filterBrightness', label: 'Luminosité', min: -100, max: 100 },
+      { key: 'ct', configKey: 'filterContrast', label: 'Contraste', min: -100, max: 100 },
+      { key: 'sa', configKey: 'filterSaturation', label: 'Saturation', min: -100, max: 100 },
+      { key: 'vi', configKey: 'filterVibrance', label: 'Vibrance', min: -100, max: 100 },
+      { key: 'wa', configKey: 'filterWarmth', label: 'Chaleur', min: -100, max: 100 },
+      { key: 'se', configKey: 'filterSepia', label: 'Sépia', min: 0, max: 100, unit: '%' },
+      { key: 'gs', configKey: 'filterGrayscale', label: 'N&B', min: 0, max: 100, unit: '%' },
+      { key: 'hu', configKey: 'filterHueRotate', label: 'Teinte', min: 0, max: 360, unit: '°' },
+    ];
+    return (
+      <div className="space-y-2">
+        {filterSliders.map((s) => (
+          <div key={s.key} className="space-y-0.5">
+            <div className="flex justify-between text-[10px]">
+              <span className="text-muted-foreground">{s.label}</span>
+              <span className="text-primary font-semibold tabular-nums">{(config[s.configKey] as number) ?? 0}{s.unit || ''}</span>
+            </div>
+            <Slider
+              value={[(config[s.configKey] as number) ?? 0]}
+              onValueChange={([v]) => onChange({ [s.configKey]: v })}
+              min={s.min}
+              max={s.max}
+              step={1}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return null;
 }
 
