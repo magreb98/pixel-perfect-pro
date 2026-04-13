@@ -8,6 +8,7 @@ import ResultStats from '@/components/ResultStats';
 import BatchProcessor from '@/components/BatchProcessor';
 import HistoryPanel from '@/components/HistoryPanel';
 import QualityComparator from '@/components/QualityComparator';
+import CropTool from '@/components/CropTool';
 import ImageAnalysisPanel from '@/components/ImageAnalysisPanel';
 import {
   processImage,
@@ -171,6 +172,12 @@ export default function Index() {
                   </div>
                 </div>
               )}
+            </motion.div>
+          )}
+
+          {tab === 'crop' && (
+            <motion.div key="crop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="max-w-4xl mx-auto">
+              <CropTool />
             </motion.div>
           )}
 
