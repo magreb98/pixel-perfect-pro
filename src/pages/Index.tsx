@@ -9,6 +9,7 @@ import ResultStats from '@/components/ResultStats';
 import HistoryPanel from '@/components/HistoryPanel';
 import QualityComparator from '@/components/QualityComparator';
 import CropTool from '@/components/CropTool';
+import PipelineEditor from '@/components/PipelineEditor';
 import ImageAnalysisPanel from '@/components/ImageAnalysisPanel';
 import { Button } from '@/components/ui/button';
 import { Download, Archive } from 'lucide-react';
