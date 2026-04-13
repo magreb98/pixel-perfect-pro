@@ -315,7 +315,23 @@ export default function Index() {
             </motion.div>
           )}
 
-          {tab === 'history' && (
+          {tab === 'pipeline' && (
+            <motion.div key="pipeline" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="max-w-3xl mx-auto">
+              {selectedImage ? (
+                <PipelineEditor
+                  file={selectedImage.file}
+                  onPipelineComplete={(blob, result) => {
+                    if (!selectedImage) return;
+                    setResults(prev => new Map(prev).set(selectedImage.id, result));
+                    setImages(prev => prev.map(i => i.id === selectedImage.id ? { ...i, edited: true } : i));
+                  }}
+                />
+              ) : (
+                <p className="text-center text-muted-foreground py-16">Ajoutez et sélectionnez une image pour le pipeline</p>
+              )}
+            </motion.div>
+          )}
+
             <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="max-w-2xl mx-auto space-y-6">
               <div className="text-center space-y-2">
                 <h2 className="font-heading text-2xl font-bold text-foreground">Historique</h2>
