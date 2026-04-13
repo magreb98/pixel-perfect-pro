@@ -2,8 +2,9 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Zap, Maximize, Sparkles, Scissors, Plus, Trash2, Play,
-  GripVertical, ChevronDown, ChevronUp, Loader2, Download, CheckCircle, ArrowRight,
+  GripVertical, ChevronDown, ChevronUp, Loader2, Download, CheckCircle, ArrowRight, Palette,
 } from 'lucide-react';
+import { applyFiltersToBlob, type FilterValues } from '@/components/FilterEditor';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { processImage, formatBytes, type ProcessingOptions, type ProcessingResult } from '@/lib/image-processing';
 
-type StepType = 'crop' | 'compress' | 'resize' | 'upscale' | 'remove-bg';
+type StepType = 'crop' | 'compress' | 'resize' | 'upscale' | 'remove-bg' | 'filter';
 
 interface PipelineStep {
   id: string;
@@ -35,6 +36,15 @@ interface StepConfig {
   maintainAspect?: boolean;
   // Upscale
   scale?: number;
+  // Filters
+  filterBrightness?: number;
+  filterContrast?: number;
+  filterSaturation?: number;
+  filterVibrance?: number;
+  filterSepia?: number;
+  filterGrayscale?: number;
+  filterHueRotate?: number;
+  filterWarmth?: number;
 }
 
 interface StepResult {
@@ -51,6 +61,7 @@ const STEP_META: Record<StepType, { label: string; icon: React.ReactNode; color:
   resize: { label: 'Redimensionner', icon: <Maximize className="w-4 h-4" />, color: 'text-sky-400' },
   upscale: { label: 'Upscale', icon: <Sparkles className="w-4 h-4" />, color: 'text-violet-400' },
   'remove-bg': { label: 'Supprimer fond', icon: <Scissors className="w-4 h-4" />, color: 'text-rose-400' },
+  filter: { label: 'Filtres', icon: <Palette className="w-4 h-4" />, color: 'text-orange-400' },
 };
 
 function defaultConfig(type: StepType): StepConfig {
@@ -60,6 +71,11 @@ function defaultConfig(type: StepType): StepConfig {
     case 'resize': return { width: 1920, maintainAspect: true };
     case 'upscale': return { scale: 2 };
     case 'remove-bg': return {};
+    case 'filter': return {
+      filterBrightness: 0, filterContrast: 0, filterSaturation: 0,
+      filterVibrance: 0, filterSepia: 0, filterGrayscale: 0,
+      filterHueRotate: 0, filterWarmth: 0,
+    };
   }
 }
 
@@ -150,10 +166,33 @@ export default function PipelineEditor({ file, onPipelineComplete }: PipelineEdi
             height: canvas.height,
             size: currentBlob.size,
           }));
+        } else if (step.type === 'filter') {
+          // Filter step: use applyFiltersToBlob
+          const filterVals: FilterValues = {
+            brightness: step.config.filterBrightness ?? 0,
+            contrast: step.config.filterContrast ?? 0,
+            saturation: step.config.filterSaturation ?? 0,
+            vibrance: step.config.filterVibrance ?? 0,
+            sepia: step.config.filterSepia ?? 0,
+            grayscale: step.config.filterGrayscale ?? 0,
+            hueRotate: step.config.filterHueRotate ?? 0,
+            warmth: step.config.filterWarmth ?? 0,
+          };
+          currentBlob = await applyFiltersToBlob(currentBlob, filterVals);
+          currentFile = new File([currentBlob], 'pipeline.png', { type: 'image/png' });
+          const fImg = await loadImage(currentBlob);
+
+          setStepResults(prev => new Map(prev).set(step.id, {
+            blob: currentBlob,
+            url: URL.createObjectURL(currentBlob),
+            width: fImg.naturalWidth,
+            height: fImg.naturalHeight,
+            size: currentBlob.size,
+          }));
         } else {
-          // Use processImage for other modes
+          // Use processImage for compress/resize/upscale/remove-bg
           const options: ProcessingOptions = {
-            mode: step.type,
+            mode: step.type as ProcessingOptions['mode'],
             quality: step.config.quality ?? 80,
             format: step.type === 'remove-bg' ? 'png' : (step.config.format ?? 'webp'),
             width: step.config.width,
@@ -484,6 +523,38 @@ function StepConfigEditor({ step, onChange }: { step: PipelineStep; onChange: (p
       <p className="text-[11px] text-muted-foreground">
         Suppression automatique par IA — modèle téléchargé localement (~40 MB).
       </p>
+    );
+  }
+
+  if (type === 'filter') {
+    const filterSliders: { key: string; configKey: keyof StepConfig; label: string; min: number; max: number; unit?: string }[] = [
+      { key: 'br', configKey: 'filterBrightness', label: 'Luminosité', min: -100, max: 100 },
+      { key: 'ct', configKey: 'filterContrast', label: 'Contraste', min: -100, max: 100 },
+      { key: 'sa', configKey: 'filterSaturation', label: 'Saturation', min: -100, max: 100 },
+      { key: 'vi', configKey: 'filterVibrance', label: 'Vibrance', min: -100, max: 100 },
+      { key: 'wa', configKey: 'filterWarmth', label: 'Chaleur', min: -100, max: 100 },
+      { key: 'se', configKey: 'filterSepia', label: 'Sépia', min: 0, max: 100, unit: '%' },
+      { key: 'gs', configKey: 'filterGrayscale', label: 'N&B', min: 0, max: 100, unit: '%' },
+      { key: 'hu', configKey: 'filterHueRotate', label: 'Teinte', min: 0, max: 360, unit: '°' },
+    ];
+    return (
+      <div className="space-y-2">
+        {filterSliders.map((s) => (
+          <div key={s.key} className="space-y-0.5">
+            <div className="flex justify-between text-[10px]">
+              <span className="text-muted-foreground">{s.label}</span>
+              <span className="text-primary font-semibold tabular-nums">{(config[s.configKey] as number) ?? 0}{s.unit || ''}</span>
+            </div>
+            <Slider
+              value={[(config[s.configKey] as number) ?? 0]}
+              onValueChange={([v]) => onChange({ [s.configKey]: v })}
+              min={s.min}
+              max={s.max}
+              step={1}
+            />
+          </div>
+        ))}
+      </div>
     );
   }
 

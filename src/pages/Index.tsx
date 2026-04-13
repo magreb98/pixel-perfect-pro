@@ -10,6 +10,7 @@ import HistoryPanel from '@/components/HistoryPanel';
 import QualityComparator from '@/components/QualityComparator';
 import CropTool from '@/components/CropTool';
 import PipelineEditor from '@/components/PipelineEditor';
+import FilterEditor from '@/components/FilterEditor';
 import ImageAnalysisPanel from '@/components/ImageAnalysisPanel';
 import { Button } from '@/components/ui/button';
 import { Download, Archive } from 'lucide-react';
@@ -291,6 +292,33 @@ export default function Index() {
                 </div>
               ) : (
                 <p className="text-center text-muted-foreground">Sélectionnez une image dans la grille ci-dessus</p>
+              )}
+            </motion.div>
+          )}
+
+          {tab === 'filters' && (
+            <motion.div key="filters" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="max-w-3xl mx-auto">
+              {selectedImage ? (
+                <FilterEditor
+                  file={selectedImage.file}
+                  onApply={(blob) => {
+                    if (!selectedImage) return;
+                    const url = URL.createObjectURL(blob);
+                    const res = {
+                      blob, url,
+                      originalSize: selectedImage.file.size,
+                      processedSize: blob.size,
+                      width: 0, height: 0,
+                      format: 'png' as const,
+                      savings: Math.max(0, Math.round((1 - blob.size / selectedImage.file.size) * 100)),
+                      mode: 'compress' as const,
+                    };
+                    setResults(prev => new Map(prev).set(selectedImage.id, res));
+                    setImages(prev => prev.map(i => i.id === selectedImage.id ? { ...i, edited: true } : i));
+                  }}
+                />
+              ) : (
+                <p className="text-center text-muted-foreground py-16">Ajoutez et sélectionnez une image pour appliquer des filtres</p>
               )}
             </motion.div>
           )}
