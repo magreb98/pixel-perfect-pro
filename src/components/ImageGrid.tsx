@@ -33,7 +33,7 @@ export default function ImageGrid({ images, selectedId, onSelect, onAdd, onRemov
     <div className="space-y-3">
       {/* Grid of uploaded images */}
       {images.length > 0 && (
-        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
           <AnimatePresence>
             {images.map((img) => (
               <motion.div

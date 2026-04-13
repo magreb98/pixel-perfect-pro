@@ -56,7 +56,7 @@ export default function ProcessingPanel({ onProcess, onDownload, processing, pro
       <h3 className="font-heading font-semibold text-lg text-foreground">Paramètres</h3>
 
       {/* Mode selector */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {modes.map((m) => (
           <button
             key={m.value}
