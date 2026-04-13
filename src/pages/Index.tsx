@@ -7,6 +7,7 @@ import BeforeAfterSlider from '@/components/BeforeAfterSlider';
 import ResultStats from '@/components/ResultStats';
 import BatchProcessor from '@/components/BatchProcessor';
 import HistoryPanel from '@/components/HistoryPanel';
+import QualityComparator from '@/components/QualityComparator';
 import ImageAnalysisPanel from '@/components/ImageAnalysisPanel';
 import {
   processImage,
@@ -170,6 +171,12 @@ export default function Index() {
                   </div>
                 </div>
               )}
+            </motion.div>
+          )}
+
+          {tab === 'compare' && (
+            <motion.div key="compare" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="max-w-4xl mx-auto">
+              <QualityComparator />
             </motion.div>
           )}
 
