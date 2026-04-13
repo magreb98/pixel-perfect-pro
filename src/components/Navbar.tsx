@@ -29,18 +29,18 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
       animate={{ opacity: 1, y: 0 }}
       className="fixed top-0 left-0 right-0 z-50 glass-subtle"
     >
-      <div className="container flex items-center justify-between h-14 sm:h-16 px-4 sm:px-6">
-        <div className="flex items-center gap-2">
+      <div className="container flex items-center h-14 sm:h-16 px-3 sm:px-6 gap-3">
+        <div className="flex items-center gap-2 shrink-0">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/15 flex items-center justify-center">
             <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
           </div>
-          <span className="font-heading font-bold text-base sm:text-lg text-foreground">
+          <span className="font-heading font-bold text-base sm:text-lg text-foreground hidden sm:inline">
             Pixel<span className="text-gradient">Forge</span>
           </span>
         </div>
 
         {/* Desktop tabs */}
-        <div className="hidden md:flex items-center gap-1">
+        <div className="hidden md:flex items-center gap-1 ml-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -63,12 +63,12 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
         </div>
 
         {/* Mobile: horizontal scroll tabs */}
-        <div className="flex md:hidden items-center gap-1 overflow-x-auto scrollbar-none max-w-[60vw]">
+        <div className="flex md:hidden items-center gap-0.5 overflow-x-auto scrollbar-none flex-1 min-w-0">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => handleTab(tab.id)}
-              className={`relative px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
+              className={`relative px-2 py-1.5 text-[11px] font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
                 activeTab === tab.id
                   ? 'text-primary bg-primary/10'
                   : 'text-muted-foreground'
