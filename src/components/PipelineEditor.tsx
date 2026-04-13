@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { processImage, formatBytes, type ProcessingOptions, type ProcessingResult } from '@/lib/image-processing';
 
-type StepType = 'crop' | 'compress' | 'resize' | 'upscale' | 'remove-bg';
+type StepType = 'crop' | 'compress' | 'resize' | 'upscale' | 'remove-bg' | 'filter';
 
 interface PipelineStep {
   id: string;
@@ -36,6 +36,15 @@ interface StepConfig {
   maintainAspect?: boolean;
   // Upscale
   scale?: number;
+  // Filters
+  filterBrightness?: number;
+  filterContrast?: number;
+  filterSaturation?: number;
+  filterVibrance?: number;
+  filterSepia?: number;
+  filterGrayscale?: number;
+  filterHueRotate?: number;
+  filterWarmth?: number;
 }
 
 interface StepResult {
@@ -52,6 +61,7 @@ const STEP_META: Record<StepType, { label: string; icon: React.ReactNode; color:
   resize: { label: 'Redimensionner', icon: <Maximize className="w-4 h-4" />, color: 'text-sky-400' },
   upscale: { label: 'Upscale', icon: <Sparkles className="w-4 h-4" />, color: 'text-violet-400' },
   'remove-bg': { label: 'Supprimer fond', icon: <Scissors className="w-4 h-4" />, color: 'text-rose-400' },
+  filter: { label: 'Filtres', icon: <Palette className="w-4 h-4" />, color: 'text-orange-400' },
 };
 
 function defaultConfig(type: StepType): StepConfig {
@@ -61,6 +71,11 @@ function defaultConfig(type: StepType): StepConfig {
     case 'resize': return { width: 1920, maintainAspect: true };
     case 'upscale': return { scale: 2 };
     case 'remove-bg': return {};
+    case 'filter': return {
+      filterBrightness: 0, filterContrast: 0, filterSaturation: 0,
+      filterVibrance: 0, filterSepia: 0, filterGrayscale: 0,
+      filterHueRotate: 0, filterWarmth: 0,
+    };
   }
 }
 
