@@ -155,6 +155,7 @@ export default function Index() {
                         </div>
                       )}
                       {result && <ResultStats result={result} />}
+                      <ImageAnalysisPanel file={file} />
                     </div>
 
                     <ProcessingPanel
