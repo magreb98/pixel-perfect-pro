@@ -10,6 +10,7 @@ const tabs = [
   { id: 'editor', label: 'Éditeur' },
   { id: 'crop', label: 'Recadrage' },
   { id: 'compare', label: 'Comparateur' },
+  { id: 'pipeline', label: 'Pipeline' },
   { id: 'history', label: 'Historique' },
 ];
 

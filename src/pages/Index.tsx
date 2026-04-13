@@ -9,6 +9,7 @@ import ResultStats from '@/components/ResultStats';
 import HistoryPanel from '@/components/HistoryPanel';
 import QualityComparator from '@/components/QualityComparator';
 import CropTool from '@/components/CropTool';
+import PipelineEditor from '@/components/PipelineEditor';
 import ImageAnalysisPanel from '@/components/ImageAnalysisPanel';
 import { Button } from '@/components/ui/button';
 import { Download, Archive } from 'lucide-react';
@@ -310,6 +311,23 @@ export default function Index() {
                 <QualityComparator file={selectedImage.file} />
               ) : (
                 <p className="text-center text-muted-foreground py-16">Ajoutez et sélectionnez une image pour comparer</p>
+              )}
+            </motion.div>
+          )}
+
+          {tab === 'pipeline' && (
+            <motion.div key="pipeline" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="max-w-3xl mx-auto">
+              {selectedImage ? (
+                <PipelineEditor
+                  file={selectedImage.file}
+                  onPipelineComplete={(blob, result) => {
+                    if (!selectedImage) return;
+                    setResults(prev => new Map(prev).set(selectedImage.id, result));
+                    setImages(prev => prev.map(i => i.id === selectedImage.id ? { ...i, edited: true } : i));
+                  }}
+                />
+              ) : (
+                <p className="text-center text-muted-foreground py-16">Ajoutez et sélectionnez une image pour le pipeline</p>
               )}
             </motion.div>
           )}
