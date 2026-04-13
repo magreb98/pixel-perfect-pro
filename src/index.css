@@ -95,4 +95,11 @@
       linear-gradient(90deg, hsl(220 15% 12%) 1px, transparent 1px);
     background-size: 60px 60px;
   }
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
