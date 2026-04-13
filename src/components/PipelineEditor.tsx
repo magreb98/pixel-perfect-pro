@@ -166,10 +166,33 @@ export default function PipelineEditor({ file, onPipelineComplete }: PipelineEdi
             height: canvas.height,
             size: currentBlob.size,
           }));
+        } else if (step.type === 'filter') {
+          // Filter step: use applyFiltersToBlob
+          const filterVals: FilterValues = {
+            brightness: step.config.filterBrightness ?? 0,
+            contrast: step.config.filterContrast ?? 0,
+            saturation: step.config.filterSaturation ?? 0,
+            vibrance: step.config.filterVibrance ?? 0,
+            sepia: step.config.filterSepia ?? 0,
+            grayscale: step.config.filterGrayscale ?? 0,
+            hueRotate: step.config.filterHueRotate ?? 0,
+            warmth: step.config.filterWarmth ?? 0,
+          };
+          currentBlob = await applyFiltersToBlob(currentBlob, filterVals);
+          currentFile = new File([currentBlob], 'pipeline.png', { type: 'image/png' });
+          const fImg = await loadImage(currentBlob);
+
+          setStepResults(prev => new Map(prev).set(step.id, {
+            blob: currentBlob,
+            url: URL.createObjectURL(currentBlob),
+            width: fImg.naturalWidth,
+            height: fImg.naturalHeight,
+            size: currentBlob.size,
+          }));
         } else {
-          // Use processImage for other modes
+          // Use processImage for compress/resize/upscale/remove-bg
           const options: ProcessingOptions = {
-            mode: step.type,
+            mode: step.type as ProcessingOptions['mode'],
             quality: step.config.quality ?? 80,
             format: step.type === 'remove-bg' ? 'png' : (step.config.format ?? 'webp'),
             width: step.config.width,
