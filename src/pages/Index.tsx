@@ -192,7 +192,7 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background bg-grid">
       <Navbar activeTab={tab} onTabChange={setTab} />
-      <main className="container pt-24 pb-16 px-4 sm:px-6">
+      <main className="container pt-20 sm:pt-24 pb-12 sm:pb-16 px-3 sm:px-6">
         {/* Image grid — always visible when images exist */}
         {images.length > 0 && (
           <div className="mb-6">
