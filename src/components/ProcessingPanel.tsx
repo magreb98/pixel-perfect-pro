@@ -4,7 +4,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Zap, Maximize, Sparkles, Download, Loader2 } from 'lucide-react';
+import { Zap, Maximize, Sparkles, Scissors, Download, Loader2 } from 'lucide-react';
 import type { ProcessingOptions } from '@/lib/image-processing';
 
 type Mode = ProcessingOptions['mode'];
@@ -19,10 +19,11 @@ interface ProcessingPanelProps {
   originalHeight?: number;
 }
 
-const modes: { value: Mode; label: string; icon: React.ReactNode; desc: string }[] = [
-  { value: 'compress', label: 'Compression', icon: <Zap className="w-4 h-4" />, desc: 'Réduire la taille' },
-  { value: 'resize', label: 'Redimensionner', icon: <Maximize className="w-4 h-4" />, desc: 'Changer les dimensions' },
-  { value: 'upscale', label: 'Upscale IA', icon: <Sparkles className="w-4 h-4" />, desc: 'Améliorer la netteté' },
+const modes: { value: Mode; label: string; icon: React.ReactNode }[] = [
+  { value: 'compress', label: 'Compresser', icon: <Zap className="w-4 h-4" /> },
+  { value: 'resize', label: 'Resize', icon: <Maximize className="w-4 h-4" /> },
+  { value: 'upscale', label: 'Upscale', icon: <Sparkles className="w-4 h-4" /> },
+  { value: 'remove-bg', label: 'Fond', icon: <Scissors className="w-4 h-4" /> },
 ];
 
 export default function ProcessingPanel({ onProcess, onDownload, processing, progress, hasResult, originalWidth, originalHeight }: ProcessingPanelProps) {
@@ -33,12 +34,14 @@ export default function ProcessingPanel({ onProcess, onDownload, processing, pro
   const [scale, setScale] = useState(2);
 
   const handleProcess = () => {
-    onProcess({
-      mode, quality, format,
+    const opts: ProcessingOptions = {
+      mode, quality,
+      format: mode === 'remove-bg' ? 'png' : format,
       width: mode === 'resize' ? width : undefined,
       maintainAspect: true,
       scale: mode === 'upscale' ? scale : undefined,
-    });
+    };
+    onProcess(opts);
   };
 
   return (
@@ -50,12 +53,12 @@ export default function ProcessingPanel({ onProcess, onDownload, processing, pro
       <h3 className="font-heading font-semibold text-lg text-foreground">Paramètres</h3>
 
       {/* Mode selector */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         {modes.map((m) => (
           <button
             key={m.value}
             onClick={() => setMode(m.value)}
-            className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all text-sm ${
+            className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all text-xs ${
               mode === m.value
                 ? 'bg-primary/15 border border-primary/40 text-primary'
                 : 'bg-secondary/50 border border-transparent text-muted-foreground hover:text-foreground'
@@ -67,23 +70,34 @@ export default function ProcessingPanel({ onProcess, onDownload, processing, pro
         ))}
       </div>
 
-      {/* Format */}
-      <div className="space-y-2">
-        <label className="text-sm text-muted-foreground">Format de sortie</label>
-        <Select value={format} onValueChange={(v) => setFormat(v as typeof format)}>
-          <SelectTrigger className="bg-secondary/50 border-border">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="webp">WebP (recommandé)</SelectItem>
-            <SelectItem value="jpeg">JPEG</SelectItem>
-            <SelectItem value="png">PNG (sans perte)</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Remove BG info */}
+      {mode === 'remove-bg' && (
+        <div className="rounded-xl bg-primary/5 border border-primary/20 p-3">
+          <p className="text-xs text-primary">
+            Suppression de fond par IA — le modèle est téléchargé lors de la première utilisation (~40 MB). Le traitement est 100% local.
+          </p>
+        </div>
+      )}
+
+      {/* Format (hidden for remove-bg, always PNG) */}
+      {mode !== 'remove-bg' && (
+        <div className="space-y-2">
+          <label className="text-sm text-muted-foreground">Format de sortie</label>
+          <Select value={format} onValueChange={(v) => setFormat(v as typeof format)}>
+            <SelectTrigger className="bg-secondary/50 border-border">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="webp">WebP (recommandé)</SelectItem>
+              <SelectItem value="jpeg">JPEG</SelectItem>
+              <SelectItem value="png">PNG (sans perte)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Quality slider */}
-      {format !== 'png' && (
+      {mode !== 'remove-bg' && format !== 'png' && (
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Qualité</span>
@@ -144,7 +158,9 @@ export default function ProcessingPanel({ onProcess, onDownload, processing, pro
               transition={{ duration: 0.3 }}
             />
           </div>
-          <p className="text-xs text-muted-foreground text-center">Traitement en cours… {progress}%</p>
+          <p className="text-xs text-muted-foreground text-center">
+            {mode === 'remove-bg' && progress < 30 ? 'Chargement du modèle IA…' : 'Traitement en cours…'} {progress}%
+          </p>
         </div>
       )}
 
