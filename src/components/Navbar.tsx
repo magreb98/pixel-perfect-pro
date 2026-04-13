@@ -1,7 +1,18 @@
 import { motion } from 'framer-motion';
 import { Layers } from 'lucide-react';
 
-export default function Navbar() {
+interface NavbarProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+}
+
+const tabs = [
+  { id: 'editor', label: 'Éditeur' },
+  { id: 'batch', label: 'Batch' },
+  { id: 'history', label: 'Historique' },
+];
+
+export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
   return (
     <motion.nav
       initial={{ opacity: 0, y: -10 }}
@@ -17,10 +28,26 @@ export default function Navbar() {
             Pixel<span className="text-gradient">Forge</span>
           </span>
         </div>
-        <div className="flex items-center gap-6 text-sm text-muted-foreground">
-          <span className="hidden sm:inline">Compression</span>
-          <span className="hidden sm:inline">Resize</span>
-          <span className="hidden sm:inline">Upscale</span>
+        <div className="flex items-center gap-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => onTabChange(tab.id)}
+              className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === tab.id
+                  ? 'text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {tab.label}
+              {activeTab === tab.id && (
+                <motion.div
+                  layoutId="nav-indicator"
+                  className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-full"
+                />
+              )}
+            </button>
+          ))}
         </div>
       </div>
     </motion.nav>
