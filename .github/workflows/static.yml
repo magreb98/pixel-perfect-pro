@@ -1,0 +1,55 @@
+name: Deploy React to GitHub Pages
+
+on:
+  push:
+    branches: ["main"] # Remplacez par "master" si nécessaire
+
+  # Permet d'exécuter ce workflow manuellement depuis l'onglet Actions
+  workflow_dispatch:
+
+# Définit les permissions nécessaires pour GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Annule les déploiements en cours si un nouveau est lancé
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Chemin vers le dossier généré par le build (souvent 'dist' pour Vite ou 'build' pour CRA)
+          path: ./dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
