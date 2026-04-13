@@ -240,7 +240,7 @@ export default function PipelineEditor({ file, onPipelineComplete }: PipelineEdi
                 }`}
               >
                 {/* Step header */}
-                <div className="flex items-center gap-3 px-4 py-3">
+                <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 flex-wrap">
                   <button
                     className="cursor-grab text-muted-foreground hover:text-foreground"
                     draggable
@@ -340,7 +340,7 @@ export default function PipelineEditor({ file, onPipelineComplete }: PipelineEdi
       </div>
 
       {/* Actions */}
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <Button
           onClick={runPipeline}
           disabled={running || steps.length === 0}

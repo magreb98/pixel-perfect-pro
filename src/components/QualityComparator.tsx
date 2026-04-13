@@ -87,7 +87,7 @@ export default function QualityComparator({ file, onSelectVariant }: QualityComp
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="text-sm text-muted-foreground font-heading truncate max-w-[200px]">{file.name}</div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <Select value={format} onValueChange={(v) => setFormat(v as typeof format)}>
             <SelectTrigger className="w-[120px] bg-secondary/50 border-border">
               <SelectValue />
