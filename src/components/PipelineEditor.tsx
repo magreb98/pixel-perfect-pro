@@ -2,8 +2,9 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Zap, Maximize, Sparkles, Scissors, Plus, Trash2, Play,
-  GripVertical, ChevronDown, ChevronUp, Loader2, Download, CheckCircle, ArrowRight,
+  GripVertical, ChevronDown, ChevronUp, Loader2, Download, CheckCircle, ArrowRight, Palette,
 } from 'lucide-react';
+import { applyFiltersToBlob, type FilterValues } from '@/components/FilterEditor';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
