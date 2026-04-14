@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import JSZip from 'jszip';
 import Navbar from '@/components/Navbar';
@@ -13,7 +13,8 @@ import PipelineEditor from '@/components/PipelineEditor';
 import FilterEditor from '@/components/FilterEditor';
 import ImageAnalysisPanel from '@/components/ImageAnalysisPanel';
 import { Button } from '@/components/ui/button';
-import { Download, Archive } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { Download, Archive, Undo2, Redo2 } from 'lucide-react';
 import {
   processImage,
   addToHistory,
@@ -23,6 +24,7 @@ import {
   type ProcessingResult,
 } from '@/lib/image-processing';
 import { useToast } from '@/hooks/use-toast';
+import { useUndoRedo } from '@/hooks/use-undo-redo';
 
 interface EditedResult {
   imageId: string;
@@ -30,28 +32,52 @@ interface EditedResult {
   filename: string;
 }
 
+// Serializable snapshot of all results
+type ResultsSnapshot = Map<string, ProcessingResult>;
+
 export default function Index() {
   const [tab, setTab] = useState('editor');
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [results, setResults] = useState<Map<string, ProcessingResult>>(new Map());
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const { toast } = useToast();
+
+  // Undo/redo on results map
+  const undoRedo = useUndoRedo<ResultsSnapshot>(new Map());
+  const results = undoRedo.current;
+
+  const setResults = useCallback((updater: (prev: ResultsSnapshot) => ResultsSnapshot) => {
+    undoRedo.set(updater(undoRedo.current));
+  }, [undoRedo]);
 
   const selectedImage = images.find(i => i.id === selectedId) || null;
   const selectedResult = selectedId ? results.get(selectedId) || null : null;
   const selectedUrl = selectedImage ? selectedImage.url : '';
 
-  const originalDims = (() => {
-    if (!selectedImage) return null;
-    // We'll compute dims when needed
-    return null;
-  })();
-
   // Track original dimensions per image
   const [dimsMap, setDimsMap] = useState<Map<string, { w: number; h: number }>>(new Map());
   const selectedDims = selectedId ? dimsMap.get(selectedId) || null : null;
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          undoRedo.redo();
+        } else {
+          undoRedo.undo();
+        }
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
+        e.preventDefault();
+        undoRedo.redo();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [undoRedo]);
 
   const handleAddImages = useCallback((files: File[]) => {
     const newItems: ImageItem[] = files.map(f => ({
@@ -61,7 +87,6 @@ export default function Index() {
     }));
     setImages(prev => [...prev, ...newItems]);
 
-    // Load dimensions
     newItems.forEach(item => {
       const img = new Image();
       img.onload = () => {
@@ -70,7 +95,6 @@ export default function Index() {
       img.src = item.url;
     });
 
-    // Auto-select the first if none selected
     if (!selectedId && newItems.length > 0) {
       setSelectedId(newItems[0].id);
     }
@@ -86,7 +110,7 @@ export default function Index() {
         return remaining.length > 0 ? remaining[0].id : null;
       });
     }
-  }, [selectedId, images]);
+  }, [selectedId, images, setResults]);
 
   const handleProcess = useCallback(async (options: ProcessingOptions) => {
     if (!selectedImage) return;
@@ -95,11 +119,9 @@ export default function Index() {
     try {
       const res = await processImage(selectedImage.file, options, setProgress);
 
-      // Store result
       setResults(prev => new Map(prev).set(selectedImage.id, res));
       setImages(prev => prev.map(i => i.id === selectedImage.id ? { ...i, edited: true } : i));
 
-      // Save to history
       const thumbnail = await createThumbnail(res.blob);
       addToHistory({
         id: crypto.randomUUID(),
@@ -121,7 +143,7 @@ export default function Index() {
     } finally {
       setProcessing(false);
     }
-  }, [selectedImage, toast]);
+  }, [selectedImage, toast, setResults]);
 
   const handleDownloadSingle = useCallback(() => {
     if (!selectedResult || !selectedImage) return;
@@ -145,7 +167,6 @@ export default function Index() {
     }
 
     if (editedEntries.length === 1) {
-      // Single file: direct download
       const entry = editedEntries[0];
       const a = document.createElement('a');
       a.href = entry.result.url;
@@ -155,7 +176,6 @@ export default function Index() {
       return;
     }
 
-    // Multiple: ZIP
     toast({ title: 'Création du ZIP…', description: 'Patientez…' });
     const zip = new JSZip();
     for (const entry of editedEntries) {
@@ -171,7 +191,6 @@ export default function Index() {
   }, [images, results, toast]);
 
   const editedCount = images.filter(i => results.has(i.id)).length;
-
   const showCheckerboard = selectedResult?.mode === 'remove-bg';
 
   const handleCropped = useCallback((blob: Blob) => {
@@ -188,24 +207,62 @@ export default function Index() {
     };
     setResults(prev => new Map(prev).set(selectedImage.id, res));
     setImages(prev => prev.map(i => i.id === selectedImage.id ? { ...i, edited: true } : i));
-  }, [selectedImage]);
+  }, [selectedImage, setResults]);
 
   return (
     <div className="min-h-screen bg-background bg-grid">
       <Navbar activeTab={tab} onTabChange={setTab} />
       <main className="container pt-20 sm:pt-24 pb-12 sm:pb-16 px-3 sm:px-6">
-        {/* Image grid — always visible when images exist */}
+        {/* Undo/Redo toolbar */}
         {images.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground">{images.length} image{images.length > 1 ? 's' : ''} · {editedCount} éditée{editedCount > 1 ? 's' : ''}</span>
               {editedCount > 0 && (
                 <Button size="sm" variant="outline" onClick={handleDownloadAllZip} className="gap-1.5">
                   <Archive className="w-3.5 h-3.5" />
-                  {editedCount > 1 ? `Télécharger ZIP (${editedCount})` : 'Télécharger'}
+                  {editedCount > 1 ? `ZIP (${editedCount})` : 'Télécharger'}
                 </Button>
               )}
             </div>
+            <TooltipProvider>
+              <div className="flex items-center gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => undoRedo.undo()}
+                      disabled={!undoRedo.canUndo}
+                      className="h-8 w-8"
+                    >
+                      <Undo2 className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom"><p>Annuler <kbd className="ml-1 text-[10px] bg-secondary px-1 rounded">⌘Z</kbd></p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => undoRedo.redo()}
+                      disabled={!undoRedo.canRedo}
+                      className="h-8 w-8"
+                    >
+                      <Redo2 className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom"><p>Rétablir <kbd className="ml-1 text-[10px] bg-secondary px-1 rounded">⌘⇧Z</kbd></p></TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
+          </div>
+        )}
+
+        {/* Image grid */}
+        {images.length > 0 && (
+          <div className="mb-6">
             <ImageGrid
               images={images}
               selectedId={selectedId}
